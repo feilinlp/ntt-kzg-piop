@@ -25,7 +25,7 @@ Reference: [KZG Paper – An Efficient Proof System for Statements about Polynom
 
 Here the Univariate ZeroTest PIOP is a PIOP proving that a univariate polynomial evaluates to zero everywhere on a subgroup ℍ<sub>l</sub> of 𝔽 with order of l and a generator ω<sub>l</sub>. Formally, the PIOP proves the relation ℝ<sub>Uni_ZT</sub> described as the following:
 
-![Univariate ZeroTest PIOP](ZeroTest-PIOP.png)
+![Univariate ZeroTest PIOP](images/ZeroTest-PIOP.png)
 
 **Runtime complexity:**
 
@@ -37,7 +37,7 @@ Here the Univariate ZeroTest PIOP is a PIOP proving that a univariate polynomial
 
 Here the Univariate ZeroTest PIOP is a PIOP proving that a univariate polynomial evaluates to zero everywhere on a subgroup ℍ<sub>l</sub> of 𝔽 with order of l and a generator ω<sub>l</sub>. Here we describe a PIOP proving that the sum of all evaluations on ℍ<sub>l</sub> of a univariate polynomial is equal to zero. Formally, the PIOP proves the relation ℝ<sub>Uni-SC</sub> described as the following:
 
-![Univariate SumCheck PIOP](SumCheck-PIOP.png)
+![Univariate SumCheck PIOP](images/SumCheck-PIOP.png)
 
 **Runtime complexity:**
 

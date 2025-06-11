@@ -1,0 +1,8 @@
+# Ignore mcl library
+/mcl/
+
+# Also ignore build artifacts
+/build/
+*.o
+*.so
+*.a

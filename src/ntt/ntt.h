@@ -16,14 +16,14 @@ using namespace std;
  * @param logN Log base 2 of the array size
  * @return Bit-reversed number
  */
-int bitReverse(int x, int logN);
+size_t bitReverse(size_t x, size_t logN);
 
 /**
  * @brief Finds a primitive N-th root of unity in the finite field
  * @param N The order of the root (must be power of 2)
  * @return A primitive N-th root of unity
  */
-Fr findPrimitiveRoot(int N);
+Fr findPrimitiveRoot(size_t N);
 
 /**
  * @brief Performs Number Theoretic Transform (NTT) on the input array

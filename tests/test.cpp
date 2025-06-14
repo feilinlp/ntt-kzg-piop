@@ -1,5 +1,5 @@
 #include "ntt.h"
-#include <iostream>
+#include "kzg.h"
 #include <vector>
 #include <random>
 #include <iomanip>
@@ -12,7 +12,7 @@ using namespace bn;
 void init_curve() {
     static bool initialized = false;
     if (!initialized) {
-        mcl::bn::initPairing(mcl::BN_SNARK1);
+        initPairing(BN_SNARK1);
         initialized = true;
     }
 }
@@ -395,6 +395,256 @@ void test_random_data() {
     cout << "Random data round-trip test: " << (success ? "PASSED" : "FAILED") << endl;
 }
 
+// Test KZG setup
+void test_kzg_setup() {
+    cout << "\n=== Testing KZG Setup ===" << endl;
+    
+    size_t t = 10;
+    auto pk = setup(t);
+    
+    cout << "Setup completed for degree " << t << endl;
+    cout << "G1 points generated: " << pk.g1.size() << endl;
+    cout << "G2 points generated: " << pk.g2.size() << endl;
+    cout << "Parameter t: " << pk.t << endl;
+    
+    // Verify we have the correct number of points
+    bool size_correct = (pk.g1.size() == t + 1 && pk.g2.size() == t + 1);
+    cout << "Size check: " << (size_correct ? "PASSED" : "FAILED") << endl;
+    
+    // Verify points are not zero (they should be different from identity)
+    bool non_zero = true;
+    G1 zero_g1;
+    G2 zero_g2;
+    
+    for (size_t i = 0; i <= t; ++i) {
+        if (pk.g1[i] == zero_g1 || pk.g2[i] == zero_g2) {
+            non_zero = false;
+            cout << "Found zero point at index " << i << endl;
+            break;
+        }
+    }
+    cout << "Non-zero points check: " << (non_zero ? "PASSED" : "FAILED") << endl;
+}
+
+// Test polynomial commitment
+void test_kzg_commit() {
+    cout << "\n=== Testing KZG Commitment ===" << endl;
+    
+    size_t t = 5;
+    auto pk = setup(t);
+    
+    // Test polynomial: 1 + 2x + 3x^2
+    vector<Fr> poly = {1, 2, 3};
+    
+    cout << "Polynomial coefficients: [";
+    for (size_t i = 0; i < poly.size(); ++i) {
+        cout << poly[i];
+        if (i < poly.size() - 1) cout << ", ";
+    }
+    cout << "]" << endl;
+    
+    auto commitment = commit(pk, poly);
+    
+    // Verify commitment is not zero
+    G1 zero_g1;
+    bool non_zero_commit = !(commitment.c == zero_g1);
+    cout << "Non-zero commitment check: " << (non_zero_commit ? "PASSED" : "FAILED") << endl;
+    
+    // Test empty polynomial commitment
+    vector<Fr> empty_poly;
+    auto empty_commit = commit(pk, empty_poly);
+    bool empty_is_zero = (empty_commit.c == zero_g1);
+    cout << "Empty polynomial commitment is zero: " << (empty_is_zero ? "PASSED" : "FAILED") << endl;
+    
+    // Test constant polynomial
+    vector<Fr> const_poly = {5};
+    auto const_commit = commit(pk, const_poly);
+    bool const_non_zero = !(const_commit.c == zero_g1);
+    cout << "Constant polynomial commitment non-zero: " << (const_non_zero ? "PASSED" : "FAILED") << endl;
+}
+
+// Test polynomial evaluation
+void test_polynomial_evaluation() {
+    cout << "\n=== Testing Polynomial Evaluation ===" << endl;
+    
+    // Test polynomial: 1 + 2x + 3x^2
+    vector<Fr> poly = {1, 2, 3};
+    
+    // Test evaluation at x = 0: should be 1
+    Fr x0 = 0;
+    Fr result0 = evaluatePolynomial(poly, x0);
+    bool test0 = (result0 == Fr(1));
+    cout << "p(0) = " << result0 << ", expected 1: " << (test0 ? "PASSED" : "FAILED") << endl;
+    
+    // Test evaluation at x = 1: should be 1 + 2 + 3 = 6
+    Fr x1 = 1;
+    Fr result1 = evaluatePolynomial(poly, x1);
+    bool test1 = (result1 == Fr(6));
+    cout << "p(1) = " << result1 << ", expected 6: " << (test1 ? "PASSED" : "FAILED") << endl;
+    
+    // Test evaluation at x = 2: should be 1 + 4 + 12 = 17
+    Fr x2 = 2;
+    Fr result2 = evaluatePolynomial(poly, x2);
+    bool test2 = (result2 == Fr(17));
+    cout << "p(2) = " << result2 << ", expected 17: " << (test2 ? "PASSED" : "FAILED") << endl;
+    
+    // Test with single coefficient
+    vector<Fr> single = {42};
+    Fr single_result = evaluatePolynomial(single, Fr(100));
+    bool single_test = (single_result == Fr(42));
+    cout << "Constant polynomial test: " << (single_test ? "PASSED" : "FAILED") << endl;
+}
+
+// Test witness creation and verification
+void test_kzg_witness() {
+    cout << "\n=== Testing KZG Witness Creation and Verification ===" << endl;
+    
+    size_t t = 10;
+    auto pk = setup(t);
+    
+    // Test polynomial: 1 + 2x + 3x^2 + x^3
+    vector<Fr> poly = {1, 2, 3, 1};
+    auto commitment = commit(pk, poly);
+    
+    cout << "Testing polynomial: 1 + 2x + 3x^2 + x^3" << endl;
+    
+    // Test witness creation and verification at different points
+    vector<Fr> test_points = {0, 1, 2, 5, 10};
+    
+    for (const auto& point : test_points) {
+        cout << "\nTesting at x = " << point << ":" << endl;
+        
+        // Create witness
+        auto witness = createWitness(pk, poly, point);
+        
+        // Verify the witness
+        bool verification = verifyEval(pk, commitment, witness);
+        cout << "Verification result: " << (verification ? "PASSED" : "FAILED") << endl;
+        
+        // Double-check by computing expected value
+        Fr expected_value = evaluatePolynomial(poly, point);
+        Fr witness_value = evaluatePolynomial(witness.q, witness.i);
+        cout << "Expected p(" << point << ") = " << expected_value << endl;
+        cout << "Witness stores p(" << witness.i << ") = " << witness_value << endl;
+    }
+}
+
+// Test edge cases for KZG
+void test_kzg_edge_cases() {
+    cout << "\n=== Testing KZG Edge Cases ===" << endl;
+    
+    size_t t = 3;
+    auto pk = setup(t);
+    
+    // Test 1: Single coefficient polynomial
+    cout << "\nTest 1: Constant polynomial" << endl;
+    vector<Fr> const_poly = {7};
+    auto const_commit = commit(pk, const_poly);
+    auto const_witness = createWitness(pk, const_poly, Fr(5));
+    bool const_verify = verifyEval(pk, const_commit, const_witness);
+    cout << "Constant polynomial verification: " << (const_verify ? "PASSED" : "FAILED") << endl;
+    
+    // Test 2: Linear polynomial
+    cout << "\nTest 2: Linear polynomial" << endl;
+    vector<Fr> linear_poly = {3, 4}; // 3 + 4x
+    auto linear_commit = commit(pk, linear_poly);
+    auto linear_witness = createWitness(pk, linear_poly, Fr(2));
+    bool linear_verify = verifyEval(pk, linear_commit, linear_witness);
+    cout << "Linear polynomial verification: " << (linear_verify ? "PASSED" : "FAILED") << endl;
+    
+    // Test 3: Zero polynomial
+    cout << "\nTest 3: Zero polynomial" << endl;
+    vector<Fr> zero_poly = {0};
+    auto zero_commit = commit(pk, zero_poly);
+    auto zero_witness = createWitness(pk, zero_poly, Fr(1));
+    bool zero_verify = verifyEval(pk, zero_commit, zero_witness);
+    cout << "Zero polynomial verification: " << (zero_verify ? "PASSED" : "FAILED") << endl;
+    
+    // Test 4: Maximum degree polynomial
+    cout << "\nTest 4: Maximum degree polynomial" << endl;
+    vector<Fr> max_poly(t + 1);
+    for (size_t i = 0; i <= t; ++i) {
+        max_poly[i] = i + 1; // 1 + 2x + 3x^2 + ... + (t+1)x^t
+    }
+    auto max_commit = commit(pk, max_poly);
+    auto max_witness = createWitness(pk, max_poly, Fr(1));
+    bool max_verify = verifyEval(pk, max_commit, max_witness);
+    cout << "Maximum degree polynomial verification: " << (max_verify ? "PASSED" : "FAILED") << endl;
+}
+
+// Test multiple witnesses for same polynomial
+void test_kzg_multiple_witnesses() {
+    cout << "\n=== Testing Multiple Witnesses for Same Polynomial ===" << endl;
+    
+    size_t t = 8;
+    auto pk = setup(t);
+    
+    // Test polynomial: x^3 - 2x^2 + x - 1
+    vector<Fr> poly = {-1, 1, -2, 1};
+    auto commitment = commit(pk, poly);
+    
+    cout << "Testing polynomial: x^3 - 2x^2 + x - 1" << endl;
+    
+    // Create multiple witnesses
+    vector<Fr> points = {0, 1, 2, 3, -1};
+    vector<KZG::Witness> witnesses;
+    
+    for (const auto& point : points) {
+        witnesses.push_back(createWitness(pk, poly, point));
+    }
+    
+    // Verify all witnesses
+    bool all_passed = true;
+    for (size_t i = 0; i < witnesses.size(); ++i) {
+        bool result = verifyEval(pk, commitment, witnesses[i]);
+        cout << "Witness " << i << " (x=" << points[i] << "): " << (result ? "PASSED" : "FAILED") << endl;
+        if (!result) all_passed = false;
+    }
+    
+    cout << "All witnesses verification: " << (all_passed ? "PASSED" : "FAILED") << endl;
+}
+
+// Test with random polynomials
+void test_kzg_random() {
+    cout << "\n=== Testing KZG with Random Polynomials ===" << endl;
+    
+    size_t t = 15;
+    auto pk = setup(t);
+    
+    random_device rd;
+    mt19937 gen(rd());
+    uniform_int_distribution<> dis(1, 100);
+    
+    // Generate random polynomial
+    size_t degree = 5 + (dis(gen) % 6); // degree between 5 and 10
+    vector<Fr> poly(degree + 1);
+    
+    cout << "Random polynomial of degree " << degree << ": [";
+    for (size_t i = 0; i <= degree; ++i) {
+        poly[i] = dis(gen);
+        cout << poly[i];
+        if (i < degree) cout << ", ";
+    }
+    cout << "]" << endl;
+    
+    auto commitment = commit(pk, poly);
+    
+    // Test at random points
+    int num_tests = 5;
+    bool all_passed = true;
+    
+    for (int i = 0; i < num_tests; ++i) {
+        Fr test_point = dis(gen);
+        auto witness = createWitness(pk, poly, test_point);
+        bool result = verifyEval(pk, commitment, witness);
+        
+        cout << "Test " << (i+1) << " at x=" << test_point << ": " << (result ? "PASSED" : "FAILED") << endl;
+        if (!result) all_passed = false;
+    }
+    
+    cout << "Random polynomial tests: " << (all_passed ? "PASSED" : "FAILED") << endl;
+}
+
 int main() {
     try {
         init_curve();
@@ -407,6 +657,15 @@ int main() {
         test_polynomial_multiply();
         test_polynomial_concept();
         test_random_data();
+        
+        // KZG Tests
+        test_kzg_setup();
+        test_kzg_commit();
+        test_polynomial_evaluation();
+        test_kzg_witness();
+        test_kzg_edge_cases();
+        test_kzg_multiple_witnesses();
+        test_kzg_random();
         
         cout << "\n=== All tests completed ===" << endl;
         

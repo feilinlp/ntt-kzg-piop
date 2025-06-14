@@ -67,5 +67,14 @@
     "xlocmon": "cpp",
     "xloctime": "cpp"
   },
-  "cSpell.words": ["CSPRNG"]
+  "cSpell.words": [
+    "CSPRNG",
+    "INTT",
+    "lcrypto",
+    "lgmp",
+    "lgmpxx",
+    "lmcl",
+    "rpath",
+    "Wextra"
+  ]
 }

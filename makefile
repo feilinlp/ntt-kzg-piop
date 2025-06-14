@@ -12,6 +12,7 @@ LIBS = -lmcl -lgmp -lgmpxx -lcrypto
 
 # Source files
 NTT_SRC = ./src/ntt/ntt.cpp
+KZG_SRC = ./src/kzg/kzg.cpp
 
 # Test files
 TEST_SRC = ./tests/test.cpp
@@ -25,8 +26,8 @@ $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)
 
 # Build the test executable
-$(TEST_TARGET): $(TEST_SRC) $(NTT_SRC) | $(BUILD_DIR)
-	$(CXX) $(CXXFLAGS) $(INCLUDES) -I./src/ntt -o $@ $^ $(LDFLAGS) $(LIBS)
+$(TEST_TARGET): $(TEST_SRC) $(NTT_SRC) $(KZG_SRC) | $(BUILD_DIR)
+	$(CXX) $(CXXFLAGS) $(INCLUDES) -I./src/ntt -I./src/kzg -o $@ $^ $(LDFLAGS) $(LIBS)
 
 # Run the test
 test: $(TEST_TARGET)

@@ -6,20 +6,20 @@ using namespace mcl;
 using namespace bn;
 using namespace std;
 
-int bitReverse(int x, int logN) {
-    int res = 0;
-    for (int i = 0; i < logN; ++i) {
+size_t bitReverse(size_t x, size_t logN) {
+    size_t res = 0;
+    for (size_t i = 0; i < logN; ++i) {
         res <<= 1;
         res |= (x >> i) & 1;
     }
     return res;
 }
 
-Fr findPrimitiveRoot(int N) {
+Fr findPrimitiveRoot(size_t N) {
     Fr order = -1;
 
     Fr g, omega, tmp;
-    for (int i = 2; ; ++i) {
+    for (size_t i = 2; ; ++i) {
         g = i;
         Fr::pow(omega, g, order / N);
 
@@ -36,22 +36,22 @@ Fr findPrimitiveRoot(int N) {
 }
 
 void ntt_transform(vector<Fr> &A, Fr omega) {
-    int n = A.size();
-    int logN = log2(n);
+    size_t n = A.size();
+    size_t logN = log2(n);
     assert((1 << logN) == n); // n must be power of 2
 
-    for (int i = 0; i < n; ++i) {
-        int j = bitReverse(i, logN);
+    for (size_t i = 0; i < n; ++i) {
+        size_t j = bitReverse(i, logN);
         if (i < j) swap(A[i], A[j]);
     }
 
-    for (int len = 2; len <= n; len <<= 1) {
+    for (size_t len = 2; len <= n; len <<= 1) {
         Fr wlen;
         Fr::pow(wlen, omega, n / len);
 
-        for (int i = 0; i < n; i += len) {
+        for (size_t i = 0; i < n; i += len) {
             Fr w = 1;
-            for (int j = 0; j < len / 2; ++j) {
+            for (size_t j = 0; j < len / 2; ++j) {
                 Fr u = A[i + j];
                 Fr v = A[i + j + len / 2] * w;
                 A[i + j] = u + v;
@@ -63,7 +63,7 @@ void ntt_transform(vector<Fr> &A, Fr omega) {
 }
 
 void ntt_inverse(vector<Fr> &A, Fr omega) {
-    int n = A.size();
+    size_t n = A.size();
 
     Fr omega_inv;
     Fr::inv(omega_inv, omega);
@@ -82,10 +82,10 @@ vector<Fr> polynomial_interpolation(vector<Fr> &A, Fr omega) {
 }
 
 vector<Fr> polynomial_multiply(vector<Fr> &A, vector<Fr> &B, Fr omega) {
-    int A_n = A.size();
-    int B_n = B.size();
+    size_t A_n = A.size();
+    size_t B_n = B.size();
 
-    int n = A_n > B_n ? A_n : B_n;
+    size_t n = A_n > B_n ? A_n : B_n;
     n *= 2;
 
     A.resize(n, 0);
@@ -95,7 +95,7 @@ vector<Fr> polynomial_multiply(vector<Fr> &A, vector<Fr> &B, Fr omega) {
     ntt_transform(B, omega);
 
     vector<Fr> result(n);
-    for (int i = 0; i < n; i++) {
+    for (size_t i = 0; i < n; i++) {
         result[i] = A[i] * B[i];
     }
 

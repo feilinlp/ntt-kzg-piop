@@ -85,8 +85,8 @@ vector<Fr> polynomial_multiply(vector<Fr> &A, vector<Fr> &B, Fr omega) {
     size_t A_n = A.size();
     size_t B_n = B.size();
 
-    size_t n = A_n > B_n ? A_n : B_n;
-    n *= 2;
+    size_t n = 1;
+    while (n < A_n + B_n) n *= 2;
 
     A.resize(n, 0);
     B.resize(n, 0);

@@ -59,10 +59,9 @@ bool zeroTest(KZG::PublicKey pk, vector<Fr> q, Fr w, size_t l) {
     // Check if q vanishes on H
     Fr curr = 1;
     for (size_t i = 0; i < l; i++) {
-        if (evaluatePolynomial(q, curr) != 0) throw new runtime_error("Polynomial does no vanish on H."); 
+        if (evaluatePolynomial(q, curr) != 0) throw runtime_error("Polynomial does not vanish on H."); 
         curr *= w;
     }
-
 
     // Prover's evaluation
     // Vanishing Polynomial zh(x) = x^l - 1
@@ -75,7 +74,8 @@ bool zeroTest(KZG::PublicKey pk, vector<Fr> q, Fr w, size_t l) {
     
     KZG::Commitment comm = commit(pk, f); // O(D)G
 
-    // V sends random challenge r to P
+    // Prover sends comm to Verifier
+    // Verifier sends random challenge r to Prover
     Fr r;
     r.setByCSPRNG();
 
@@ -86,7 +86,7 @@ bool zeroTest(KZG::PublicKey pk, vector<Fr> q, Fr w, size_t l) {
 
     KZG::Witness witness = createWitness(pk, f, r); // Witness to fr --> O(D)G
 
-    // Prover sends to Verifier: comm, witness, qr, fr, zr
+    // Prover sends to Verifier: witness, qr, fr, zr
 
     // Verifier's evaluation
     // V checks if the commitment and witness open to f(r) --> O(1)G

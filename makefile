@@ -14,6 +14,7 @@ LIBS = -lmcl -lgmp -lgmpxx -lcrypto
 NTT_SRC = ./src/ntt/ntt.cpp
 KZG_SRC = ./src/kzg/kzg.cpp
 ZEROTEST_SRC = ./src/zerotest/zerotest.cpp
+SUMCHECK_SRC = ./src/sumcheck/sumcheck.cpp
 
 # Test files
 TEST_SRC = ./tests/test.cpp
@@ -27,8 +28,8 @@ $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)
 
 # Build the test executable
-$(TEST_TARGET): $(TEST_SRC) $(NTT_SRC) $(KZG_SRC) $(ZEROTEST_SRC) | $(BUILD_DIR)
-	$(CXX) $(CXXFLAGS) $(INCLUDES) -I./src/ntt -I./src/kzg -I./src/zerotest -o $@ $^ $(LDFLAGS) $(LIBS)
+$(TEST_TARGET): $(TEST_SRC) $(NTT_SRC) $(KZG_SRC) $(ZEROTEST_SRC) $(SUMCHECK_SRC) | $(BUILD_DIR)
+	$(CXX) $(CXXFLAGS) $(INCLUDES) -I./src/ntt -I./src/kzg -I./src/zerotest -I./src/sumcheck -o $@ $^ $(LDFLAGS) $(LIBS)
 
 # Run the test
 test: $(TEST_TARGET)

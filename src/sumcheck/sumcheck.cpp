@@ -11,13 +11,6 @@ using namespace bn;
 
 // Proof size is O(1) as there is constant number of communication.
 bool sumCheck(KZG::PublicKey pk, vector<Fr> q, Fr w, size_t l, Fr s) {
-    // Check if q vanishes on H
-    Fr curr = 1;
-    for (size_t i = 0; i < l; i++) {
-        if (evaluatePolynomial(q, curr) != 0) throw runtime_error("Polynomial does not vanish on H."); 
-        curr *= w;
-    }
-
     // Vanishing Polynomial zh(x) = x^l - 1
     vector<Fr> zh(l+1, 0);
     zh[0] = -1;
@@ -27,6 +20,14 @@ bool sumCheck(KZG::PublicKey pk, vector<Fr> q, Fr w, size_t l, Fr s) {
     // Since zh(x) = x^l - 1, polynomialDivision is O(D)F
     vector<Fr> temp = q;
     temp[0] -= s / l;
+
+    // Check if q(x) - s / l vanishes on H
+    Fr curr = 1;
+    for (size_t i = 0; i < l; i++) {
+        if (evaluatePolynomial(temp, curr) != 0) throw runtime_error("Polynomial does not vanish on H."); 
+        curr *= w;
+    }
+
     vector<Fr> f = polynomialDivision(temp, zh);
     
     KZG::Commitment comm_f = commit(pk, f); // O(D)G

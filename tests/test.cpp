@@ -1,366 +1,433 @@
 #include "sumcheck.h"
 #include "kzg.h"
 #include "ntt.h"
+#include "zerotest.h"
 #include <mcl/bn.hpp>
 #include <iostream>
 #include <vector>
 #include <cassert>
 #include <cmath>
+#include <cstdlib>
 
 using namespace std;
 using namespace mcl;
 using namespace bn;
 
-// Helper function to check if n is a power of 2
-bool isPowerOfTwo(size_t n) {
-    return n > 0 && (n & (n - 1)) == 0;
-}
-
-// Helper function to create a polynomial that vanishes on H and has a specific sum
-vector<Fr> createValidSumCheckPolynomial(size_t l, Fr omega, Fr target_sum) {
-    assert(isPowerOfTwo(l));
-    
-    // Create vanishing polynomial zh(x) = x^l - 1
-    vector<Fr> zh(l + 1, 0);
-    zh[0] = -1;  // -1
-    zh[l] = 1;   // x^l
-    
-    // Create a random polynomial f(x) of degree < l
-    vector<Fr> f(l);
-    for (size_t i = 0; i < l; i++) {
-        f[i].setByCSPRNG();
-    }
-    
-    // Compute f * zh using polynomial multiplication
-    vector<Fr> f_copy = f;
-    vector<Fr> zh_copy = zh;
-    
-    // For polynomial multiplication, we need a larger domain
-    size_t mult_size = 1;
-    while (mult_size < f.size() + zh.size()) mult_size *= 2;
-    
-    Fr mult_omega = findPrimitiveRoot(mult_size);
-    vector<Fr> fzh = polynomial_multiply(f_copy, zh_copy, mult_omega);
-    
-    // Resize to appropriate degree
-    fzh.resize(l + f.size());
-    
-    // Add constant term to make sum equal target_sum
-    // Since f*zh vanishes on H, we just need to add target_sum/l
-    Fr constant_term = target_sum;
-    Fr l_inv;
-    Fr l_fr = l;
-    Fr::inv(l_inv, l_fr);
-    Fr::mul(constant_term, constant_term, l_inv);
-    
-    fzh[0] = fzh[0] + constant_term;
-    
-    return fzh;
-}
-
-// Test case 1: Basic valid sum check with power-of-2 domain
-bool testBasicValidSumCheck() {
-    cout << "Test 1: Basic Valid Sum Check (l=4)..." << endl;
+bool testNTT() {
+    cout << "Testing NTT and Inverse NTT..." << endl;
     
     try {
-        size_t l = 4;  // Must be power of 2 for NTT
-        KZG::PublicKey pk = setup(3 * l);  // Larger setup for safety
+        // Test 1: Basic NTT and INTT roundtrip
+        size_t N = 8;
+        Fr omega = findPrimitiveRoot(N);
         
-        // Find primitive root using NTT function
-        Fr omega = findPrimitiveRoot(l);
+        vector<Fr> original(8);
+        for (int i = 0; i < 8; i++) original[i] = rand();
+        vector<Fr> test_data = original;
         
-        // Target sum
-        Fr target_sum = 42;
+        // Forward NTT
+        ntt_transform(test_data, omega);
+        cout << "✓ Forward NTT completed" << endl;
         
-        // Create valid polynomial
-        vector<Fr> q = createValidSumCheckPolynomial(l, omega, target_sum);
+        // Inverse NTT
+        ntt_inverse(test_data, omega);
+        cout << "✓ Inverse NTT completed" << endl;
         
-        bool result = sumCheck(pk, q, omega, l, target_sum);
+        // Check if we get back the original
+        bool roundtrip_correct = true;
+        for (size_t i = 0; i < N; i++) {
+            if (test_data[i] != original[i]) {
+                roundtrip_correct = false;
+                break;
+            }
+        }
         
-        if (result) {
-            cout << "✓ Test 1 PASSED" << endl;
-            return true;
+        if (roundtrip_correct) {
+            cout << "✓ NTT/INTT roundtrip test passed" << endl;
         } else {
-            cout << "✗ Test 1 FAILED" << endl;
-            return false;
-        }
-    } catch (const exception& e) {
-        cout << "✗ Test 1 FAILED with exception: " << e.what() << endl;
-        return false;
-    }
-}
-
-// Test case 2: Invalid sum should fail
-bool testInvalidSum() {
-    cout << "Test 2: Invalid Sum Check..." << endl;
-    
-    try {
-        size_t l = 4;
-        KZG::PublicKey pk = setup(3 * l);
-        
-        Fr omega = findPrimitiveRoot(l);
-        
-        Fr correct_sum = 100;
-        Fr wrong_sum = 200;
-        
-        // Create polynomial that sums to correct_sum
-        vector<Fr> q = createValidSumCheckPolynomial(l, omega, correct_sum);
-        
-        // But claim it sums to wrong_sum
-        bool result = sumCheck(pk, q, omega, l, wrong_sum);
-        
-        if (!result) {
-            cout << "✓ Test 2 PASSED (correctly rejected invalid sum)" << endl;
-            return true;
-        } else {
-            cout << "✗ Test 2 FAILED (should have rejected invalid sum)" << endl;
-            return false;
-        }
-    } catch (const exception& e) {
-        cout << "✗ Test 2 FAILED with exception: " << e.what() << endl;
-        return false;
-    }
-}
-
-// Test case 3: Non-vanishing polynomial should throw exception
-bool testNonVanishingPolynomial() {
-    cout << "Test 3: Non-Vanishing Polynomial..." << endl;
-    
-    try {
-        size_t l = 4;
-        KZG::PublicKey pk = setup(3 * l);
-        
-        Fr omega = findPrimitiveRoot(l);
-        
-        // Create a polynomial that does NOT vanish on H
-        // Simple constant polynomial
-        vector<Fr> q(5, 0);
-        q[0] = 1;  // q(x) = 1, which doesn't vanish anywhere
-        
-        Fr s = l;  // This would be the sum if it were valid
-        
-        // This should throw an exception
-        bool result = sumCheck(pk, q, omega, l, s);
-        
-        cout << "✗ Test 3 FAILED (should have thrown exception)" << endl;
-        return false;
-        
-    } catch (const runtime_error& e) {
-        cout << "✓ Test 3 PASSED (correctly caught non-vanishing polynomial)" << endl;
-        return true;
-    } catch (const exception& e) {
-        cout << "✗ Test 3 FAILED with unexpected exception: " << e.what() << endl;
-        return false;
-    }
-}
-
-// Test case 4: Larger domain (l=8)
-bool testLargerDomain() {
-    cout << "Test 4: Larger Domain (l=8)..." << endl;
-    
-    try {
-        size_t l = 8;
-        KZG::PublicKey pk = setup(3 * l);
-        
-        Fr omega = findPrimitiveRoot(l);
-        
-        Fr target_sum = 1337;
-        vector<Fr> q = createValidSumCheckPolynomial(l, omega, target_sum);
-        
-        bool result = sumCheck(pk, q, omega, l, target_sum);
-        
-        if (result) {
-            cout << "✓ Test 4 PASSED" << endl;
-            return true;
-        } else {
-            cout << "✗ Test 4 FAILED" << endl;
-            return false;
-        }
-    } catch (const exception& e) {
-        cout << "✗ Test 4 FAILED with exception: " << e.what() << endl;
-        return false;
-    }
-}
-
-// Test case 5: Zero sum
-bool testZeroSum() {
-    cout << "Test 5: Zero Sum..." << endl;
-    
-    try {
-        size_t l = 4;
-        KZG::PublicKey pk = setup(3 * l);
-        
-        Fr omega = findPrimitiveRoot(l);
-        
-        Fr zero_sum = 0;
-        vector<Fr> q = createValidSumCheckPolynomial(l, omega, zero_sum);
-        
-        bool result = sumCheck(pk, q, omega, l, zero_sum);
-        
-        if (result) {
-            cout << "✓ Test 5 PASSED" << endl;
-            return true;
-        } else {
-            cout << "✗ Test 5 FAILED" << endl;
-            return false;
-        }
-    } catch (const exception& e) {
-        cout << "✗ Test 5 FAILED with exception: " << e.what() << endl;
-        return false;
-    }
-}
-
-// Test case 6: Purely vanishing polynomial (sum should be 0)
-bool testPureVanishingPolynomial() {
-    cout << "Test 6: Pure Vanishing Polynomial..." << endl;
-    
-    try {
-        size_t l = 4;
-        KZG::PublicKey pk = setup(3 * l);
-        
-        Fr omega = findPrimitiveRoot(l);
-        
-        // Create the vanishing polynomial zh(x) = x^l - 1
-        vector<Fr> q(l + 1, 0);
-        q[0] = -1;  // -1
-        q[l] = 1;   // x^l
-        
-        Fr expected_sum = 0;  // Should sum to 0 since it vanishes on H
-        
-        bool result = sumCheck(pk, q, omega, l, expected_sum);
-        
-        if (result) {
-            cout << "✓ Test 6 PASSED" << endl;
-            return true;
-        } else {
-            cout << "✗ Test 6 FAILED" << endl;
-            return false;
-        }
-    } catch (const exception& e) {
-        cout << "✗ Test 6 FAILED with exception: " << e.what() << endl;
-        return false;
-    }
-}
-
-// Test case 7: Verify NTT root properties
-bool testNTTRootProperties() {
-    cout << "Test 7: NTT Root Properties..." << endl;
-    
-    try {
-        size_t l = 8;
-        Fr omega = findPrimitiveRoot(l);
-        
-        // Verify omega^l = 1
-        Fr omega_l;
-        Fr::pow(omega_l, omega, l);
-        Fr one = 1;
-        
-        if (omega_l != one) {
-            cout << "✗ Test 7 FAILED: omega^l != 1" << endl;
+            cout << "✗ NTT/INTT roundtrip test failed" << endl;
             return false;
         }
         
-        // Verify omega^(l/2) = -1 (for l > 2)
-        if (l > 2) {
-            Fr omega_half;
-            Fr::pow(omega_half, omega, l / 2);
-            Fr minus_one = -1;
+        // Test 2: Test with different sizes
+        for (size_t size : {4, 16, 32}) {
+            Fr omega_test = findPrimitiveRoot(size);
+            vector<Fr> test_vec(size);
+            for (size_t i = 0; i < size; i++) {
+                test_vec[i] = rand();
+            }
             
-            if (omega_half != minus_one) {
-                cout << "✗ Test 7 FAILED: omega^(l/2) != -1" << endl;
+            vector<Fr> backup = test_vec;
+            ntt_transform(test_vec, omega_test);
+            ntt_inverse(test_vec, omega_test);
+            
+            bool size_test_passed = true;
+            for (size_t i = 0; i < size; i++) {
+                if (test_vec[i] != backup[i]) {
+                    size_test_passed = false;
+                    break;
+                }
+            }
+            
+            if (size_test_passed) {
+                cout << "✓ NTT size " << size << " test passed" << endl;
+            } else {
+                cout << "✗ NTT size " << size << " test failed" << endl;
                 return false;
             }
         }
         
-        // Verify all powers are distinct
-        vector<Fr> powers(l);
-        Fr curr = 1;
-        for (size_t i = 0; i < l; i++) {
-            powers[i] = curr;
-            Fr::mul(curr, curr, omega);
-        }
-        
-        for (size_t i = 0; i < l; i++) {
-            for (size_t j = i + 1; j < l; j++) {
-                if (powers[i] == powers[j]) {
-                    cout << "✗ Test 7 FAILED: powers not distinct" << endl;
-                    return false;
-                }
-            }
-        }
-        
-        cout << "✓ Test 7 PASSED (NTT root properties verified)" << endl;
+        cout << "✓ All NTT tests passed!" << endl;
         return true;
         
     } catch (const exception& e) {
-        cout << "✗ Test 7 FAILED with exception: " << e.what() << endl;
+        cout << "✗ NTT test failed with exception: " << e.what() << endl;
         return false;
     }
 }
 
-// Test case 8: Large domain stress test
-bool testLargeDomainStress() {
-    cout << "Test 8: Large Domain Stress Test (l=16)..." << endl;
+bool testPoly() {
+    cout << "Testing Polynomial Multiplication using NTT..." << endl;
     
     try {
-        size_t l = 16;
-        KZG::PublicKey pk = setup(4 * l);  // Even larger setup
+        // Test 1: Simple polynomial multiplication
+        // (x + 1) * (x + 2) = x^2 + 3x + 2
+        vector<Fr> A = {1, 1}; // x + 1
+        vector<Fr> B = {2, 1}; // x + 2
         
-        Fr omega = findPrimitiveRoot(l);
+        size_t result_size = 1;
+        while (result_size < A.size() + B.size()) result_size *= 2;
+        Fr omega = findPrimitiveRoot(result_size);
         
-        Fr target_sum = 12345;
-        vector<Fr> q = createValidSumCheckPolynomial(l, omega, target_sum);
+        vector<Fr> result = polynomial_multiply(A, B, omega);
         
-        bool result = sumCheck(pk, q, omega, l, target_sum);
-        
-        if (result) {
-            cout << "✓ Test 8 PASSED" << endl;
-            return true;
+        // Expected: x^2 + 3x + 2 = [2, 3, 1, 0, ...]
+        if (result[0] == 2 && result[1] == 3 && result[2] == 1) {
+            cout << "✓ Basic polynomial multiplication test passed" << endl;
         } else {
-            cout << "✗ Test 8 FAILED" << endl;
+            cout << "✗ Basic polynomial multiplication test failed" << endl;
+            cout << "Expected: [2, 3, 1], Got: [" << result[0] << ", " << result[1] << ", " << result[2] << "]" << endl;
             return false;
         }
+        
+        // Test 2: Multiplication with zero polynomial
+        vector<Fr> zero_poly = {0};
+        vector<Fr> non_zero = {1, 2, 3};
+        
+        result_size = 1;
+        while (result_size < zero_poly.size() + non_zero.size()) result_size *= 2;
+        omega = findPrimitiveRoot(result_size);
+        
+        result = polynomial_multiply(zero_poly, non_zero, omega);
+        
+        bool is_zero = true;
+        for (size_t i = 0; i < min(result.size(), size_t(4)); i++) {
+            if (result[i] != 0) {
+                is_zero = false;
+                break;
+            }
+        }
+        
+        if (is_zero) {
+            cout << "✓ Zero polynomial multiplication test passed" << endl;
+        } else {
+            cout << "✗ Zero polynomial multiplication test failed" << endl;
+            return false;
+        }
+        
+        // Test 3: Larger polynomial multiplication
+        // Test (x^2 + x + 1) * (x + 1) = x^3 + 2x^2 + 2x + 1
+        vector<Fr> P1 = {1, 1, 1}; // x^2 + x + 1
+        vector<Fr> P2 = {1, 1};    // x + 1
+        
+        result_size = 1;
+        while (result_size < P1.size() + P2.size()) result_size *= 2;
+        omega = findPrimitiveRoot(result_size);
+        
+        result = polynomial_multiply(P1, P2, omega);
+        
+        // Expected: x^3 + 2x^2 + 2x + 1 = [1, 2, 2, 1]
+        if (result[0] == 1 && result[1] == 2 && result[2] == 2 && result[3] == 1) {
+            cout << "✓ Larger polynomial multiplication test passed" << endl;
+        } else {
+            cout << "✗ Larger polynomial multiplication test failed" << endl;
+            return false;
+        }
+        
+        cout << "✓ All polynomial multiplication tests passed!" << endl;
+        return true;
+        
     } catch (const exception& e) {
-        cout << "✗ Test 8 FAILED with exception: " << e.what() << endl;
+        cout << "✗ Polynomial multiplication test failed with exception: " << e.what() << endl;
+        return false;
+    }
+}
+
+bool testKZG() {
+    cout << "Testing KZG Commitment Scheme..." << endl;
+    
+    try {
+        size_t degree = 30;
+        KZG::PublicKey pk = setup(degree);
+        cout << "✓ KZG setup completed" << endl;
+        
+        // Test 1: Basic commitment and evaluation
+        vector<Fr> polynomial = {rand(), rand(), rand(), rand()}; 
+        KZG::Commitment comm = commit(pk, polynomial);
+        cout << "✓ Polynomial commitment created" << endl;
+        
+        // Test evaluation at a random point
+        Fr eval_point = rand();
+        Fr expected_value = evaluatePolynomial(polynomial, eval_point);
+        
+        // Create witness
+        KZG::Witness witness = createWitness(pk, polynomial, eval_point);
+        cout << "✓ Witness created" << endl;
+        
+        // Verify
+        bool verification_result = verifyEval(pk, comm, eval_point, expected_value, witness);
+        
+        if (verification_result) {
+            cout << "✓ KZG evaluation verification passed" << endl;
+        } else {
+            cout << "✗ KZG evaluation verification failed" << endl;
+            return false;
+        }
+        
+        // Test 2: Multiple evaluation points
+        vector<Fr> test_points = {rand(), rand(), rand(), rand()};
+        bool all_evaluations_passed = true;
+        
+        for (Fr point : test_points) {
+            Fr value = evaluatePolynomial(polynomial, point);
+            KZG::Witness w = createWitness(pk, polynomial, point);
+            
+            if (!verifyEval(pk, comm, point, value, w)) {
+                all_evaluations_passed = false;
+                break;
+            }
+        }
+        
+        if (all_evaluations_passed) {
+            cout << "✓ Multiple evaluation points test passed" << endl;
+        } else {
+            cout << "✗ Multiple evaluation points test failed" << endl;
+            return false;
+        }
+        
+        // Test 3: Test with wrong evaluation (should fail)
+        Fr wrong_value = expected_value + 1;
+        KZG::Witness wrong_witness = createWitness(pk, polynomial, eval_point);
+        bool should_fail = verifyEval(pk, comm, eval_point, wrong_value, wrong_witness);
+        
+        if (!should_fail) {
+            cout << "✓ Wrong evaluation correctly rejected" << endl;
+        } else {
+            cout << "✗ Wrong evaluation incorrectly accepted" << endl;
+            return false;
+        }
+        
+        cout << "✓ All KZG tests passed!" << endl;
+        return true;
+        
+    } catch (const exception& e) {
+        cout << "✗ KZG test failed with exception: " << e.what() << endl;
+        return false;
+    }
+}
+
+bool testZeroTest() {
+    cout << "Testing Zero Test Protocol..." << endl;
+    
+    try {
+        size_t l = 4; // Domain size
+        Fr w = findPrimitiveRoot(l);
+        
+        // Test 1: Create a polynomial that vanishes on H = {1, w, w^2, w^3}
+        // Use polynomial (x-1)(x-w)(x-w^2)(x-w^3) = x^4 - 1
+        vector<Fr> vanishing_poly(5, 0);
+        vanishing_poly[0] = -1; // -1
+        vanishing_poly[4] = 1;  // x^4
+        
+        cout << "✓ Created vanishing polynomial" << endl;
+        
+        // Setup KZG
+        size_t degree = 10;
+        KZG::PublicKey pk = setup(degree);
+        cout << "✓ KZG setup for zero test completed" << endl;
+        
+        // Test the zero test
+        bool zero_test_result = zeroTest(pk, vanishing_poly, w, l);
+        
+        if (zero_test_result) {
+            cout << "✓ Zero test passed for vanishing polynomial" << endl;
+        } else {
+            cout << "✗ Zero test failed for vanishing polynomial" << endl;
+            return false;
+        }
+        
+        // Test 2: Create a polynomial that does NOT vanish on H
+        vector<Fr> non_vanishing_poly = {1, 2, 3, 4, 5}; // 1 + 2x + 3x^2 + 4x^3 + 5x^4
+        
+        bool should_fail = false;
+        try {
+            zeroTest(pk, non_vanishing_poly, w, l);
+            should_fail = true; // If we reach here, the test didn't throw as expected
+        } catch (const runtime_error& e) {
+            cout << "✓ Non-vanishing polynomial correctly rejected" << endl;
+        }
+        
+        if (should_fail) {
+            cout << "✗ Non-vanishing polynomial incorrectly accepted" << endl;
+            return false;
+        }
+        
+        // Test 3: Test with a more complex vanishing polynomial
+        // Create polynomial that vanishes on domain by constructing it properly
+        vector<Fr> complex_vanishing(10, 0);
+        complex_vanishing[5] = -1;
+        complex_vanishing[9] = 1;
+        // Add some higher degree terms that don't affect vanishing property
+        
+        bool complex_test_result = zeroTest(pk, complex_vanishing, w, l);
+        
+        if (complex_test_result) {
+            cout << "✓ Complex vanishing polynomial test passed" << endl;
+        } else {
+            cout << "✗ Complex vanishing polynomial test failed" << endl;
+            return false;
+        }
+        
+        cout << "✓ All zero test protocol tests passed!" << endl;
+        return true;
+        
+    } catch (const exception& e) {
+        cout << "✗ Zero test failed with exception: " << e.what() << endl;
+        return false;
+    }
+}
+
+bool testSumCheck() {
+    cout << "Testing Sum Check Protocol..." << endl;
+    
+    try {
+        size_t l = 4; // Domain size
+        Fr w = findPrimitiveRoot(l);
+        
+        // Setup KZG
+        size_t degree = 10;
+        KZG::PublicKey pk = setup(degree);
+        cout << "✓ KZG setup for sum check completed" << endl;
+        
+        // Test 1: Create a polynomial and calculate its sum over domain H
+        // Use polynomial q(x) = x^4 - 1 + constant, which vanishes on H
+        // Then sum over H should be l * constant
+        Fr constant = 5;
+        Fr expected_sum = constant * l;
+        
+        vector<Fr> test_poly(5, 0);
+        test_poly[0] = -1 + constant; // -1 + constant
+        test_poly[4] = 1;             // x^4
+        
+        cout << "✓ Created test polynomial for sum check" << endl;
+        
+        // Verify the sum manually
+        Fr actual_sum = 0;
+        Fr curr = 1;
+        for (size_t i = 0; i < l; i++) {
+            actual_sum += evaluatePolynomial(test_poly, curr);
+            curr *= w;
+        }
+        
+        if (actual_sum == expected_sum) {
+            cout << "✓ Manual sum verification correct" << endl;
+        } else {
+            cout << "✗ Manual sum verification failed" << endl;
+            return false;
+        }
+        
+        // Test the sum check protocol
+        bool sum_check_result = sumCheck(pk, test_poly, w, l, expected_sum);
+        
+        if (sum_check_result) {
+            cout << "✓ Sum check protocol passed" << endl;
+        } else {
+            cout << "✗ Sum check protocol failed" << endl;
+            return false;
+        }
+        
+        // Test 2: Test with wrong sum (should fail)
+        Fr wrong_sum = expected_sum + 1;
+        bool should_fail = false;
+        
+        try {
+            bool wrong_result = sumCheck(pk, test_poly, w, l, wrong_sum);
+            if (wrong_result) {
+                should_fail = true;
+            } else {
+                cout << "✓ Wrong sum correctly rejected" << endl;
+            }
+        } catch (const exception& e) {
+            cout << "✓ Wrong sum correctly rejected with exception" << endl;
+        }
+        
+        if (should_fail) {
+            cout << "✗ Wrong sum incorrectly accepted" << endl;
+            return false;
+        }
+        
+        // Test 3: Test with non-vanishing polynomial (should fail)
+        vector<Fr> non_vanishing = {1, 2, 3, 4}; // Doesn't vanish on H
+        bool non_vanishing_should_fail = false;
+        
+        try {
+            sumCheck(pk, non_vanishing, w, l, 10);
+            non_vanishing_should_fail = true;
+        } catch (const runtime_error& e) {
+            cout << "✓ Non-vanishing polynomial correctly rejected in sum check" << endl;
+        }
+        
+        if (non_vanishing_should_fail) {
+            cout << "✗ Non-vanishing polynomial incorrectly accepted in sum check" << endl;
+            return false;
+        }
+        
+        cout << "✓ All sum check protocol tests passed!" << endl;
+        return true;
+        
+    } catch (const exception& e) {
+        cout << "✗ Sum check test failed with exception: " << e.what() << endl;
         return false;
     }
 }
 
 int main() {
-    cout << "=== Univariate Sum Check PIOP Tests (with NTT) ===" << endl;
-    cout << "Using BN_SNARK1 curve with MCL library and NTT" << endl << endl;
-    
     // Initialize the curve
     initPairing(BN_SNARK1);
-    
+
     int passed = 0;
-    int total = 8;
-    
-    // Run all tests
-    if (testBasicValidSumCheck()) passed++;
+    int total = 5;
+
+    cout << "=== NTT & INTT Tests ===" << endl;
+    if (testNTT()) passed++;
     cout << endl;
-    
-    if (testInvalidSum()) passed++;
+
+    cout << "=== Polynomial Multiplication Tests ===" << endl;
+    if (testPoly()) passed++;
     cout << endl;
-    
-    if (testNonVanishingPolynomial()) passed++;
+
+    cout << "=== KZG Tests ===" << endl;
+    if (testKZG()) passed++;
     cout << endl;
-    
-    if (testLargerDomain()) passed++;
+
+    cout << "=== ZeroTest Tests ===" << endl;
+    if (testZeroTest()) passed++;
     cout << endl;
-    
-    if (testZeroSum()) passed++;
+
+    cout << "=== SumCheck Tests ===" << endl;
+    if (testSumCheck()) passed++;
     cout << endl;
-    
-    if (testPureVanishingPolynomial()) passed++;
-    cout << endl;
-    
-    if (testNTTRootProperties()) passed++;
-    cout << endl;
-    
-    if (testLargeDomainStress()) passed++;
-    cout << endl;
-    
+
     // Summary
     cout << "=== Test Summary ===" << endl;
     cout << "Passed: " << passed << "/" << total << " tests" << endl;

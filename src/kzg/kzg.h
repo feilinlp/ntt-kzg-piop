@@ -36,6 +36,6 @@ vector<Fr> divideByLinear(vector<Fr> q, Fr i);
 
 KZG::Witness createWitness(KZG::PublicKey pk, vector<Fr> q, Fr i);
 
-bool verifyEval(KZG::PublicKey pk, KZG::Commitment comm, KZG::Witness witness);
+bool verifyEval(KZG::PublicKey pk, KZG::Commitment comm, Fr i, Fr qi, KZG::Witness witness);
 
 #endif // KZG_H

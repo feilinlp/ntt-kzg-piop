@@ -81,10 +81,14 @@ bool zeroTest(KZG::PublicKey pk, vector<Fr> q, Fr w, size_t l) {
     r.setByCSPRNG();
 
     // Prover evaluates the values to f(r) and q(r)
+    Fr qr = evaluatePolynomial(q, r);
+    Fr fr = evaluatePolynomial(f, r);
+
+    // Prover creates witnesses to f(r) and q(r)
     KZG::Witness witness_f = createWitness(pk, f, r); // Witness to fr --> O(D)G
     KZG::Witness witness_q = createWitness(pk, q, r); // Witness to qr --> O(D)G
 
-    // Prover sends to Verifier: witness_f and witness_q
+    // Prover sends to Verifier: witness_f, witness_q, fr and qr
 
     // Public knowledge --> Both Prover and Verifier can evaluate Zh(r) in O(1)F
     Fr zr;
@@ -93,6 +97,6 @@ bool zeroTest(KZG::PublicKey pk, vector<Fr> q, Fr w, size_t l) {
 
     // Verifier's evaluation
     // V checks if the commitment and witness open to f(r) and q(r) --> O(1)G
-    // V also checks that the evaluated qr = fr * zr --> O(1)F
-    return verifyEval(pk, comm_f, witness_f) && verifyEval(pk, comm_q, witness_q) && witness_q.w == witness_f.w * zr;
+    // V also checks that the evaluated qr = fr * zr --> O(1)G
+    return verifyEval(pk, comm_f, r, fr, witness_f) && verifyEval(pk, comm_q, r, qr, witness_q) && qr == fr * zr;
 }

@@ -76,7 +76,9 @@ KZG::Witness createWitness(KZG::PublicKey pk, vector<Fr> q, Fr i) {
     witness.q = q;
     witness.w.clear();
 
-    q[0] -= evaluatePolynomial(q, i);
+    witness.qi = evaluatePolynomial(q, i);
+
+    q[0] -= witness.qi;
     vector<Fr> result = divideByLinear(q, i);
 
     for (size_t j = 0; j < result.size(); j++) {
@@ -88,7 +90,7 @@ KZG::Witness createWitness(KZG::PublicKey pk, vector<Fr> q, Fr i) {
     return witness;
 }
 
-bool verifyEval(KZG::PublicKey pk, KZG::Commitment comm, Fr i, Fr qi, KZG::Witness witness) {
+bool verifyEval(KZG::PublicKey pk, KZG::Commitment comm, Fr i, KZG::Witness witness) {
     GT left, right1, right2;
     pairing(left, comm.c, pk.g2[0]); // e(C, g)
 
@@ -102,7 +104,7 @@ bool verifyEval(KZG::PublicKey pk, KZG::Commitment comm, Fr i, Fr qi, KZG::Witne
     pairing(right2, pk.g1[0], pk.g2[0]); // e(g,g)
     
     GT right;
-    GT::pow(right, right2, qi);
+    GT::pow(right, right2, witness.qi);
     GT::mul(right, right1, right);
 
     return left == right;

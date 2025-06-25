@@ -8,47 +8,23 @@ using namespace std;
 using namespace mcl;
 using namespace bn;
 
-// a = divided, b = divisor
-vector<Fr> polynomialDivision(vector<Fr> a, vector<Fr> b) {
+vector<Fr> polynomialDivision(vector<Fr> &a, size_t n) {
     // Remove leading zeros
     while (!a.empty() && a.back().isZero()) {
         a.pop_back();
     }
-    while (!b.empty() && b.back().isZero()) {
-        b.pop_back();
+    
+    if (a.size() <= n) {
+        return vector<Fr>(1, Fr(0));
     }
     
-    if (b.empty()) {
-        throw runtime_error("Division by zero polynomial");
-    }
+    vector<Fr> quotient(a.size() - n, Fr(0));
     
-    if (a.size() < b.size()) {
-        return vector<Fr>(1, 0); // Result is zero
-    }
-    
-    vector<Fr> quotient(a.size() - b.size() + 1, 0);
-    vector<Fr> remainder = a;
-    
-    for (int i = quotient.size() - 1; i >= 0; i--) {
-        if (remainder.size() >= b.size()) {
-            // Calculate the coefficient for this term
-            Fr coeff = remainder.back() / b.back();
-            quotient[i] = coeff;
-            
-            // Subtract b * coeff * x^i from remainder
-            for (int j = b.size() - 1; j >= 0; j--) {
-                if (b[j] == 0) continue; // Reduces to O(1) if b = zh
-                int pos = remainder.size() - b.size() + j;
-                if (pos >= 0 && pos < remainder.size()) {
-                    remainder[pos] = remainder[pos] - coeff * b[j];
-                }
-            }
-            
-            // Remove leading zero
-            while (!remainder.empty() && remainder.back().isZero()) {
-                remainder.pop_back();
-            }
-        }
+    // Copy high-degree coefficients to quotient and add them to low-degree terms
+    for (int i = a.size() - 1; i >= n; i--) {
+        quotient[i - n] = a[i];
+        a[i - n] += a[i]; 
+        a[i] = 0;
     }
     
     return quotient;
@@ -63,14 +39,11 @@ bool zeroTest(KZG::PublicKey pk, vector<Fr> q, Fr w, size_t l) {
         curr *= w;
     }
 
-    // Vanishing Polynomial zh(x) = x^l - 1
-    vector<Fr> zh(l+1, 0);
-    zh[0] = -1;
-    zh[l] = 1;
     
     // Prover's evaluation
     // Since zh(x) = x^l - 1, polynomialDivision is O(D)F
-    vector<Fr> f = polynomialDivision(q, zh);
+    vector <Fr> remainder = q;
+    vector<Fr> f = polynomialDivision(remainder, l);
     
     KZG::Commitment comm_f = commit(pk, f); // O(D)G
     KZG::Commitment comm_q = commit(pk, q); // O(D)G
@@ -80,15 +53,11 @@ bool zeroTest(KZG::PublicKey pk, vector<Fr> q, Fr w, size_t l) {
     Fr r;
     r.setByCSPRNG();
 
-    // Prover evaluates the values to f(r) and q(r)
-    Fr qr = evaluatePolynomial(q, r);
-    Fr fr = evaluatePolynomial(f, r);
-
     // Prover creates witnesses to f(r) and q(r)
     KZG::Witness witness_f = createWitness(pk, f, r); // Witness to fr --> O(D)G
     KZG::Witness witness_q = createWitness(pk, q, r); // Witness to qr --> O(D)G
 
-    // Prover sends to Verifier: witness_f, witness_q, fr and qr
+    // Prover sends to Verifier: witness_f, witness_q
 
     // Public knowledge --> Both Prover and Verifier can evaluate Zh(r) in O(1)F
     Fr zr;
@@ -98,5 +67,5 @@ bool zeroTest(KZG::PublicKey pk, vector<Fr> q, Fr w, size_t l) {
     // Verifier's evaluation
     // V checks if the commitment and witness open to f(r) and q(r) --> O(1)G
     // V also checks that the evaluated qr = fr * zr --> O(1)G
-    return verifyEval(pk, comm_f, r, fr, witness_f) && verifyEval(pk, comm_q, r, qr, witness_q) && qr == fr * zr;
+    return verifyEval(pk, comm_f, r, witness_f) && verifyEval(pk, comm_q, r, witness_q) && witness_q.qi == witness_f.qi * zr;
 }

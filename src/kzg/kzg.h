@@ -21,8 +21,9 @@ public:
 
     struct Witness {
         Fr i;
-        vector<Fr> q; // Polynomial
+        vector<Fr> q; // Polynomial (not needed)
         G1 w; // Witness
+        Fr qi; // Evaluated value
     };
 };
 
@@ -36,6 +37,6 @@ vector<Fr> divideByLinear(vector<Fr> q, Fr i);
 
 KZG::Witness createWitness(KZG::PublicKey pk, vector<Fr> q, Fr i);
 
-bool verifyEval(KZG::PublicKey pk, KZG::Commitment comm, Fr i, Fr qi, KZG::Witness witness);
+bool verifyEval(KZG::PublicKey pk, KZG::Commitment comm, Fr i, KZG::Witness witness);
 
 #endif // KZG_H

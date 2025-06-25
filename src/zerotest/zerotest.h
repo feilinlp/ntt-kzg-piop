@@ -9,7 +9,7 @@ using namespace mcl;
 using namespace bn;
 using namespace std;
 
-vector<Fr> polynomialDivision(vector<Fr> a, vector<Fr> b);
+vector<Fr> polynomialDivision(vector<Fr> &a, size_t n);
 
 bool zeroTest(KZG::PublicKey pk, vector<Fr> q, Fr w, size_t l);
 

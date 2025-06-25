@@ -35,10 +35,9 @@ bool zeroTest(KZG::PublicKey pk, vector<Fr> q, Fr w, size_t l) {
     // Check if q vanishes on H
     Fr curr = 1;
     for (size_t i = 0; i < l; i++) {
-        if (evaluatePolynomial(q, curr) != 0) throw runtime_error("Polynomial does not vanish on H."); 
+        if (evaluatePoly(q, curr) != 0) throw runtime_error("Polynomial does not vanish on H."); 
         curr *= w;
     }
-
     
     // Prover's evaluation
     // Since zh(x) = x^l - 1, polynomialDivision is O(D)F

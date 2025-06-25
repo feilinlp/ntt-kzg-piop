@@ -1,5 +1,6 @@
 #include "kzg.h"
 #include <mcl/bn.hpp>
+#include <mcl/lagrange.hpp>
 
 using namespace std;
 using namespace mcl;
@@ -44,16 +45,11 @@ KZG::Commitment commit(KZG::PublicKey pk, vector<Fr> q) {
 }
 
 // Evaluate the value of q(i)
-Fr evaluatePolynomial(vector<Fr> q, Fr i) {
-    Fr result = 0;
-    Fr curr = 1;
-    for (size_t j = 0; j < q.size(); j++) {
-        Fr temp;
-        Fr::mul(temp, q[j], curr);
-        Fr::add(result, result, temp);
-        Fr::mul(curr, curr, i);
-    }
-
+Fr evaluatePoly(vector<Fr> q, Fr i) {
+    if (q.empty()) return Fr(0);
+    
+    Fr result;
+    evaluatePolynomial(result, q.data(), q.size(), i);
     return result;
 }
 
@@ -76,7 +72,7 @@ KZG::Witness createWitness(KZG::PublicKey pk, vector<Fr> q, Fr i) {
     witness.q = q;
     witness.w.clear();
 
-    witness.qi = evaluatePolynomial(q, i);
+    witness.qi = evaluatePoly(q, i);
 
     q[0] -= witness.qi;
     vector<Fr> result = divideByLinear(q, i);

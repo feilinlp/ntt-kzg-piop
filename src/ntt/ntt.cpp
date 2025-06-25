@@ -18,21 +18,13 @@ size_t bitReverse(size_t x, size_t logN) {
 Fr findPrimitiveRoot(size_t N) {
     Fr order = -1;
 
-    Fr g, omega, tmp;
-    for (size_t i = 2; ; ++i) {
-        g = i;
-        Fr::pow(omega, g, order / N);
-
-        // Check: omega^N == 1
-        Fr::pow(tmp, omega, N);
-        if (tmp != 1) continue;
-
-        // Check: omega^(N/2) == -1 
-        Fr::pow(tmp, omega, N / 2);
-        if (tmp != -1) continue;
-
-        return omega;
+    size_t i = 1;
+    while (i < N / 2) {
+        i *= 2;
+        Fr::squareRoot(order, order);
     }
+
+    return order;
 }
 
 void ntt_transform(vector<Fr> &A, Fr omega) {

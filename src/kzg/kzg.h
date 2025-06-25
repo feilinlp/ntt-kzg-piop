@@ -31,7 +31,7 @@ KZG::PublicKey setup(size_t t);
 
 KZG::Commitment commit(KZG::PublicKey pk, vector<Fr> q);
 
-Fr evaluatePolynomial(vector<Fr> q, Fr i);
+Fr evaluatePoly(vector<Fr> q, Fr i);
 
 vector<Fr> divideByLinear(vector<Fr> q, Fr i);
 

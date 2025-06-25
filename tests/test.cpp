@@ -8,13 +8,17 @@
 #include <cassert>
 #include <cmath>
 #include <cstdlib>
+#include <chrono>
+#include <iomanip>
 
 using namespace std;
 using namespace mcl;
 using namespace bn;
+using namespace std::chrono;
 
 bool testNTT() {
     cout << "Testing NTT and Inverse NTT..." << endl;
+    auto start_time = high_resolution_clock::now();
     
     try {
         // Test 1: Basic NTT and INTT roundtrip
@@ -46,6 +50,9 @@ bool testNTT() {
             cout << "✓ NTT/INTT roundtrip test passed" << endl;
         } else {
             cout << "✗ NTT/INTT roundtrip test failed" << endl;
+            auto end_time = high_resolution_clock::now();
+            auto duration = duration_cast<milliseconds>(end_time - start_time);
+            cout << "⏱️  Test completed in " << fixed << setprecision(3) << duration.count() / 1000.0 << " seconds" << endl;
             return false;
         }
         
@@ -73,21 +80,31 @@ bool testNTT() {
                 cout << "✓ NTT size " << size << " test passed" << endl;
             } else {
                 cout << "✗ NTT size " << size << " test failed" << endl;
+                auto end_time = high_resolution_clock::now();
+                auto duration = duration_cast<milliseconds>(end_time - start_time);
+                cout << "⏱️  Test completed in " << fixed << setprecision(3) << duration.count() / 1000.0 << " seconds" << endl;
                 return false;
             }
         }
         
         cout << "✓ All NTT tests passed!" << endl;
+        auto end_time = high_resolution_clock::now();
+        auto duration = duration_cast<milliseconds>(end_time - start_time);
+        cout << "⏱️  Test completed in " << fixed << setprecision(3) << duration.count() / 1000.0 << " seconds" << endl;
         return true;
         
     } catch (const exception& e) {
         cout << "✗ NTT test failed with exception: " << e.what() << endl;
+        auto end_time = high_resolution_clock::now();
+        auto duration = duration_cast<milliseconds>(end_time - start_time);
+        cout << "⏱️  Test completed in " << fixed << setprecision(3) << duration.count() / 1000.0 << " seconds" << endl;
         return false;
     }
 }
 
 bool testPoly() {
     cout << "Testing Polynomial Multiplication using NTT..." << endl;
+    auto start_time = high_resolution_clock::now();
     
     try {
         // Test 1: Simple polynomial multiplication
@@ -107,6 +124,9 @@ bool testPoly() {
         } else {
             cout << "✗ Basic polynomial multiplication test failed" << endl;
             cout << "Expected: [2, 3, 1], Got: [" << result[0] << ", " << result[1] << ", " << result[2] << "]" << endl;
+            auto end_time = high_resolution_clock::now();
+            auto duration = duration_cast<milliseconds>(end_time - start_time);
+            cout << "⏱️  Test completed in " << fixed << setprecision(3) << duration.count() / 1000.0 << " seconds" << endl;
             return false;
         }
         
@@ -132,6 +152,9 @@ bool testPoly() {
             cout << "✓ Zero polynomial multiplication test passed" << endl;
         } else {
             cout << "✗ Zero polynomial multiplication test failed" << endl;
+            auto end_time = high_resolution_clock::now();
+            auto duration = duration_cast<milliseconds>(end_time - start_time);
+            cout << "⏱️  Test completed in " << fixed << setprecision(3) << duration.count() / 1000.0 << " seconds" << endl;
             return false;
         }
         
@@ -151,20 +174,30 @@ bool testPoly() {
             cout << "✓ Larger polynomial multiplication test passed" << endl;
         } else {
             cout << "✗ Larger polynomial multiplication test failed" << endl;
+            auto end_time = high_resolution_clock::now();
+            auto duration = duration_cast<milliseconds>(end_time - start_time);
+            cout << "⏱️  Test completed in " << fixed << setprecision(3) << duration.count() / 1000.0 << " seconds" << endl;
             return false;
         }
         
         cout << "✓ All polynomial multiplication tests passed!" << endl;
+        auto end_time = high_resolution_clock::now();
+        auto duration = duration_cast<milliseconds>(end_time - start_time);
+        cout << "⏱️  Test completed in " << fixed << setprecision(3) << duration.count() / 1000.0 << " seconds" << endl;
         return true;
         
     } catch (const exception& e) {
         cout << "✗ Polynomial multiplication test failed with exception: " << e.what() << endl;
+        auto end_time = high_resolution_clock::now();
+        auto duration = duration_cast<milliseconds>(end_time - start_time);
+        cout << "⏱️  Test completed in " << fixed << setprecision(3) << duration.count() / 1000.0 << " seconds" << endl;
         return false;
     }
 }
 
 bool testKZG() {
     cout << "Testing KZG Commitment Scheme..." << endl;
+    auto start_time = high_resolution_clock::now();
     
     try {
         size_t degree = 30;
@@ -178,7 +211,7 @@ bool testKZG() {
         
         // Test evaluation at a random point
         Fr eval_point = rand();
-        Fr expected_value = evaluatePolynomial(polynomial, eval_point);
+        Fr expected_value = evaluatePoly(polynomial, eval_point);
         
         // Create witness
         KZG::Witness witness = createWitness(pk, polynomial, eval_point);
@@ -191,6 +224,9 @@ bool testKZG() {
             cout << "✓ KZG evaluation verification passed" << endl;
         } else {
             cout << "✗ KZG evaluation verification failed" << endl;
+            auto end_time = high_resolution_clock::now();
+            auto duration = duration_cast<milliseconds>(end_time - start_time);
+            cout << "⏱️  Test completed in " << fixed << setprecision(3) << duration.count() / 1000.0 << " seconds" << endl;
             return false;
         }
         
@@ -199,7 +235,7 @@ bool testKZG() {
         bool all_evaluations_passed = true;
         
         for (Fr point : test_points) {
-            Fr value = evaluatePolynomial(polynomial, point);
+            Fr value = evaluatePoly(polynomial, point);
             KZG::Witness w = createWitness(pk, polynomial, point);
             
             if (!verifyEval(pk, comm, point, w)) {
@@ -212,6 +248,9 @@ bool testKZG() {
             cout << "✓ Multiple evaluation points test passed" << endl;
         } else {
             cout << "✗ Multiple evaluation points test failed" << endl;
+            auto end_time = high_resolution_clock::now();
+            auto duration = duration_cast<milliseconds>(end_time - start_time);
+            cout << "⏱️  Test completed in " << fixed << setprecision(3) << duration.count() / 1000.0 << " seconds" << endl;
             return false;
         }
         
@@ -224,20 +263,30 @@ bool testKZG() {
             cout << "✓ Wrong evaluation correctly rejected" << endl;
         } else {
             cout << "✗ Wrong evaluation incorrectly accepted" << endl;
+            auto end_time = high_resolution_clock::now();
+            auto duration = duration_cast<milliseconds>(end_time - start_time);
+            cout << "⏱️  Test completed in " << fixed << setprecision(3) << duration.count() / 1000.0 << " seconds" << endl;
             return false;
         }
         
         cout << "✓ All KZG tests passed!" << endl;
+        auto end_time = high_resolution_clock::now();
+        auto duration = duration_cast<milliseconds>(end_time - start_time);
+        cout << "⏱️  Test completed in " << fixed << setprecision(3) << duration.count() / 1000.0 << " seconds" << endl;
         return true;
         
     } catch (const exception& e) {
         cout << "✗ KZG test failed with exception: " << e.what() << endl;
+        auto end_time = high_resolution_clock::now();
+        auto duration = duration_cast<milliseconds>(end_time - start_time);
+        cout << "⏱️  Test completed in " << fixed << setprecision(3) << duration.count() / 1000.0 << " seconds" << endl;
         return false;
     }
 }
 
 bool testZeroTest() {
     cout << "Testing Zero Test Protocol..." << endl;
+    auto start_time = high_resolution_clock::now();
     
     try {
         size_t l = 4; // Domain size
@@ -263,6 +312,9 @@ bool testZeroTest() {
             cout << "✓ Zero test passed for vanishing polynomial" << endl;
         } else {
             cout << "✗ Zero test failed for vanishing polynomial" << endl;
+            auto end_time = high_resolution_clock::now();
+            auto duration = duration_cast<milliseconds>(end_time - start_time);
+            cout << "⏱️  Test completed in " << fixed << setprecision(3) << duration.count() / 1000.0 << " seconds" << endl;
             return false;
         }
         
@@ -279,6 +331,9 @@ bool testZeroTest() {
         
         if (should_fail) {
             cout << "✗ Non-vanishing polynomial incorrectly accepted" << endl;
+            auto end_time = high_resolution_clock::now();
+            auto duration = duration_cast<milliseconds>(end_time - start_time);
+            cout << "⏱️  Test completed in " << fixed << setprecision(3) << duration.count() / 1000.0 << " seconds" << endl;
             return false;
         }
         
@@ -295,20 +350,30 @@ bool testZeroTest() {
             cout << "✓ Complex vanishing polynomial test passed" << endl;
         } else {
             cout << "✗ Complex vanishing polynomial test failed" << endl;
+            auto end_time = high_resolution_clock::now();
+            auto duration = duration_cast<milliseconds>(end_time - start_time);
+            cout << "⏱️  Test completed in " << fixed << setprecision(3) << duration.count() / 1000.0 << " seconds" << endl;
             return false;
         }
         
         cout << "✓ All zero test protocol tests passed!" << endl;
+        auto end_time = high_resolution_clock::now();
+        auto duration = duration_cast<milliseconds>(end_time - start_time);
+        cout << "⏱️  Test completed in " << fixed << setprecision(3) << duration.count() / 1000.0 << " seconds" << endl;
         return true;
         
     } catch (const exception& e) {
         cout << "✗ Zero test failed with exception: " << e.what() << endl;
+        auto end_time = high_resolution_clock::now();
+        auto duration = duration_cast<milliseconds>(end_time - start_time);
+        cout << "⏱️  Test completed in " << fixed << setprecision(3) << duration.count() / 1000.0 << " seconds" << endl;
         return false;
     }
 }
 
 bool testSumCheck() {
     cout << "Testing Sum Check Protocol..." << endl;
+    auto start_time = high_resolution_clock::now();
     
     try {
         size_t l = 4; // Domain size
@@ -335,7 +400,7 @@ bool testSumCheck() {
         Fr actual_sum = 0;
         Fr curr = 1;
         for (size_t i = 0; i < l; i++) {
-            actual_sum += evaluatePolynomial(test_poly, curr);
+            actual_sum += evaluatePoly(test_poly, curr);
             curr *= w;
         }
         
@@ -343,6 +408,9 @@ bool testSumCheck() {
             cout << "✓ Manual sum verification correct" << endl;
         } else {
             cout << "✗ Manual sum verification failed" << endl;
+            auto end_time = high_resolution_clock::now();
+            auto duration = duration_cast<milliseconds>(end_time - start_time);
+            cout << "⏱️  Test completed in " << fixed << setprecision(3) << duration.count() / 1000.0 << " seconds" << endl;
             return false;
         }
         
@@ -353,6 +421,9 @@ bool testSumCheck() {
             cout << "✓ Sum check protocol passed" << endl;
         } else {
             cout << "✗ Sum check protocol failed" << endl;
+            auto end_time = high_resolution_clock::now();
+            auto duration = duration_cast<milliseconds>(end_time - start_time);
+            cout << "⏱️  Test completed in " << fixed << setprecision(3) << duration.count() / 1000.0 << " seconds" << endl;
             return false;
         }
         
@@ -373,14 +444,23 @@ bool testSumCheck() {
         
         if (should_fail) {
             cout << "✗ Wrong sum incorrectly accepted" << endl;
+            auto end_time = high_resolution_clock::now();
+            auto duration = duration_cast<milliseconds>(end_time - start_time);
+            cout << "⏱️  Test completed in " << fixed << setprecision(3) << duration.count() / 1000.0 << " seconds" << endl;
             return false;
         }
         
         cout << "✓ All sum check protocol tests passed!" << endl;
+        auto end_time = high_resolution_clock::now();
+        auto duration = duration_cast<milliseconds>(end_time - start_time);
+        cout << "⏱️  Test completed in " << fixed << setprecision(3) << duration.count() / 1000.0 << " seconds" << endl;
         return true;
         
     } catch (const exception& e) {
         cout << "✗ Sum check test failed with exception: " << e.what() << endl;
+        auto end_time = high_resolution_clock::now();
+        auto duration = duration_cast<milliseconds>(end_time - start_time);
+        cout << "⏱️  Test completed in " << fixed << setprecision(3) << duration.count() / 1000.0 << " seconds" << endl;
         return false;
     }
 }
@@ -391,6 +471,7 @@ int main() {
 
     int passed = 0;
     int total = 5;
+    auto total_start_time = high_resolution_clock::now();
 
     cout << "=== NTT & INTT Tests ===" << endl;
     if (testNTT()) passed++;
@@ -413,8 +494,12 @@ int main() {
     cout << endl;
 
     // Summary
+    auto total_end_time = high_resolution_clock::now();
+    auto total_duration = duration_cast<milliseconds>(total_end_time - total_start_time);
+    
     cout << "=== Test Summary ===" << endl;
     cout << "Passed: " << passed << "/" << total << " tests" << endl;
+    cout << "⏱️  Total execution time: " << fixed << setprecision(3) << total_duration.count() / 1000.0 << " seconds" << endl;
     
     if (passed == total) {
         cout << "🎉 All tests PASSED!" << endl;

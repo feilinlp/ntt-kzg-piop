@@ -69,7 +69,6 @@ vector<Fr> divideByLinear(vector<Fr> q, Fr i) {
 KZG::Witness createWitness(KZG::PublicKey pk, vector<Fr> q, Fr i) {
     KZG::Witness witness;
     witness.i = i;
-    witness.q = q;
     witness.w.clear();
 
     witness.qi = evaluatePoly(q, i);

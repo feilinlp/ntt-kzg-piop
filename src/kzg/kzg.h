@@ -21,7 +21,6 @@ public:
 
     struct Witness {
         Fr i;
-        vector<Fr> q; // Polynomial (not needed)
         G1 w; // Witness
         Fr qi; // Evaluated value
     };

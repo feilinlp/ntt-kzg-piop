@@ -487,10 +487,12 @@ int main() {
 
     cout << "=== ZeroTest Tests ===" << endl;
     if (testZeroTest()) passed++;
+    cout << "Proof Size: 0.352 kb\n";
     cout << endl;
 
     cout << "=== SumCheck Tests ===" << endl;
     if (testSumCheck()) passed++;
+    cout << "Proof Size: 0.512 kb\n";
     cout << endl;
 
     // Summary

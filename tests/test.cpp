@@ -211,7 +211,6 @@ bool testKZG() {
         
         // Test evaluation at a random point
         Fr eval_point = rand();
-        Fr expected_value = evaluatePoly(polynomial, eval_point);
         
         // Create witness
         KZG::Witness witness = createWitness(pk, polynomial, eval_point);
@@ -235,7 +234,6 @@ bool testKZG() {
         bool all_evaluations_passed = true;
         
         for (Fr point : test_points) {
-            Fr value = evaluatePoly(polynomial, point);
             KZG::Witness w = createWitness(pk, polynomial, point);
             
             if (!verifyEval(pk, comm, point, w)) {
